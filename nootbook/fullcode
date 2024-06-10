@@ -1,0 +1,109 @@
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_curve, auc
+
+# 加载数据集
+data_path = 'data/WA_Fn-UseC_-Telco-Customer-Churn.csv'
+df = pd.read_csv(data_path)
+
+# 数据预处理
+df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
+df['TotalCharges'].fillna(df['TotalCharges'].mean(), inplace=True)
+
+label_encoders = {}
+categorical_columns = ['gender', 'Partner', 'Dependents', 'PhoneService', 'MultipleLines', 
+                       'InternetService', 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 
+                       'TechSupport', 'StreamingTV', 'StreamingMovies', 'Contract', 'PaperlessBilling', 
+                       'PaymentMethod', 'Churn']
+for column in categorical_columns:
+    le = LabelEncoder()
+    df[column] = le.fit_transform(df[column])
+    label_encoders[column] = le
+
+# 探索性数据分析
+numerical_columns = ['tenure', 'MonthlyCharges', 'TotalCharges']
+for column in numerical_columns:
+    plt.figure(figsize=(8, 4))
+    sns.histplot(df[column], kde=True)
+    plt.title(f'{column} 分布')
+    plt.show()
+
+categorical_columns = ['gender', 'SeniorCitizen', 'Partner', 'Dependents', 'PhoneService', 
+                       'MultipleLines', 'InternetService', 'OnlineSecurity', 'OnlineBackup', 
+                       'DeviceProtection', 'TechSupport', 'StreamingTV', 'StreamingMovies', 
+                       'Contract', 'PaperlessBilling', 'PaymentMethod', 'Churn']
+for column in categorical_columns:
+    plt.figure(figsize=(8, 4))
+    sns.countplot(data=df, x=column)
+    plt.title(f'{column} 计数')
+    plt.show()
+
+# 特征工程
+df['tenure_group'] = pd.cut(df['tenure'], bins=[0, 12, 24, 48, 60, 72], labels=['0-12', '12-24', '24-48', '48-60', '60-72'])
+
+# 模型构建与评估
+X = df.drop('Churn', axis=1)
+y = df['Churn']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# 训练 Logistic Regression 模型
+lr_model = LogisticRegression()
+lr_model.fit(X_train, y_train)
+y_pred_lr = lr_model.predict(X_test)
+
+# 训练 Decision Tree 模型
+dt_model = DecisionTreeClassifier()
+dt_model.fit(X_train, y_train)
+y_pred_dt = dt_model.predict(X_test)
+
+# 训练 Gradient Boosting 模型
+gb_model = GradientBoostingClassifier()
+gb_model.fit(X_train, y_train)
+y_pred_gb = gb_model.predict(X_test)
+
+# 训练 Random Forest 模型
+rf_model = RandomForestClassifier()
+rf_model.fit(X_train, y_train)
+y_pred_rf = rf_model.predict(X_test)
+
+# 评估模型
+models = {'Logistic Regression': y_pred_lr, 'Decision Tree': y_pred_dt,
+          'Gradient Boosting': y_pred_gb, 'Random Forest': y_pred_rf}
+
+for name, y_pred in models.items():
+    accuracy = accuracy_score(y_test, y_pred)
+    print(f'{name} 准确率: {accuracy:.4f}')
+    print(f'{name} 分类报告:')
+    print(classification_report(y_test, y_pred))
+    print(f'{name} 混淆矩阵:')
+    print(confusion_matrix(y_test, y_pred))
+
+# 可视化
+plt.figure(figsize=(10, 8))
+for name, model in models.items():
+    if name == 'Logistic Regression':
+        y_pred_proba = lr_model.predict_proba(X_test)[:, 1]
+    elif name == 'Decision Tree':
+        y_pred_proba = dt_model.predict_proba(X_test)[:, 1]
+    elif name == 'Gradient Boosting':
+        y_pred_proba = gb_model.predict_proba(X_test)[:, 1]
+    elif name == 'Random Forest':
+        y_pred_proba = rf_model.predict_proba(X_test)[:, 1]
+    fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
+    roc_auc = auc(fpr, tpr)
+    plt.plot(fpr, tpr, lw=2, label=f'{name} ROC 曲线 (AUC = {roc_auc:.2f})')
+
+plt.plot([0, 1], [0, 1], color='gray', lw=2, linestyle='--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('假阳性率')
+plt.ylabel('真阳性率')
+plt.title('ROC 曲线')
+plt.legend(loc="lower right")
+plt.show()
