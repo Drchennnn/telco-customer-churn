@@ -8,9 +8,3 @@ This repository contains code and data for predicting customer churn in the tele
 - `notebooks/`: Contains the Jupyter notebook with all the analysis and modeling.
 - `scripts/`: Contains Python scripts for different stages of the analysis.
 - `README.md`: Project description and instructions.
-- `requirements.txt`: List of dependencies.
-
-## Setup
-1. Clone the repository:
-   ```sh
-   git clone https://github.com/your-username/telco-customer-churn.git
